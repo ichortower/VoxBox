@@ -1,0 +1,11 @@
+{
+  "Name": "VoxBox",
+  "Author": "ichortower",
+  "Description": "Mod Description",
+  "Version": "0.8.0-beta",
+  "UniqueID": "ichortower.VoxBox",
+  "EntryDll": "VoxBox.dll",
+  "MinimumApiVersion": "4.1.0",
+  "UpdateKeys": ["GitHub:ichortower/VoxBox"],
+  "Dependencies": []
+}
