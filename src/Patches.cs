@@ -78,10 +78,7 @@ internal class Patches
             DialogueBox __instance)
     {
         Patches.SpeechDelegate = null;
-        //Patches.voiceCue?.Stop(AudioStopOptions.Immediate);
-        //Patches.voiceCue = null;
         LineReadings.ClearCurrent();
-        //Patches.lineWasPlayed = false;
     }
 
     internal enum ReadMode {
@@ -100,12 +97,13 @@ internal class Patches
         if (Game1.activeClickableMenu is not DialogueBox db ||
                 db.characterDialoguesBrokenUp.Count < 2) {
             Patches.SpeechDelegate = null;
-            //Patches.voiceCue?.Stop(AudioStopOptions.Immediate);
-            //Patches.voiceCue = null;
             LineReadings.ClearCurrent();
-            //Patches.lineWasPlayed = false;
         }
 
+        // leaving the dialogue command dummied out for the beta
+        return;
+
+        /*
         string text = __instance.dialogues[__instance.currentDialogueIndex].Text;
         if (!text.StartsWith($"&{VoxBox.ModId} ")) {
             return;
@@ -191,60 +189,6 @@ internal class Patches
         else {
             setParameters.Invoke();
         }
-        /*
-        if (args.Length < 6) {
-            Log.Warn($"Too few arguments to '${VoxBox.ModId}': expected at least 4," +
-                    $" got {args.Length-2}");
-            return;
-        }
-
-        string cueName = args[1];
-        string strPitch = args[2];
-        int pitch = -8000;
-        string strVolume = args[3];
-        float volume = -1f;
-        List<int> delays = new();
-
-        int i = 4;
-        for (; i < args.Length-1 && args[i] != "-"; ++i) {
-            if (!int.TryParse(args[i], out int d)) {
-                Log.Warn($"Failed to parse int from delay value '{args[i]}'");
-                break;
-            }
-            delays.Add(d);
-        }
-        string clipped = string.Join(" ", args[(i+1)..]);
-        __instance.dialogues[__instance.currentDialogueIndex].Text = clipped;
-
-        if (strPitch != "-" && !int.TryParse(strPitch, out pitch)) {
-            Log.Warn($"Failed to parse integer from pitch value '{strPitch}'");
-            return;
-        }
-        if (strVolume != "-" && !float.TryParse(strVolume, out volume)) {
-            Log.Warn($"Failed to parse float from volume value '{strVolume}'");
-            return;
-        }
-
-        Action setParameters = delegate {
-            if (cueName != "-") {
-                VoiceData.CurrentVoice.CueName = cueName;
-            }
-            if (pitch != -8000) {
-                VoiceData.CurrentVoice.Pitch = pitch;
-            }
-            if (volume != -1f) {
-                VoiceData.CurrentVoice.Volume = volume;
-            }
-            if (delays.Count > 0) {
-                VoiceData.CurrentVoice.Delay = delays.ToArray();
-            }
-        };
-        if (Game1.activeClickableMenu is not DialogueBox) {
-            VoiceData.OnOpen = setParameters;
-        }
-        else {
-            setParameters.Invoke();
-        }
         */
     }
 
@@ -286,55 +230,6 @@ internal class Patches
 
         _ = SpeechDelegate(db, time);
         return;
-
-        /*
-        if (LineReadings.DelayTimer > 0) {
-            LineReadings.DelayTimer -= time.ElapsedGameTime.Milliseconds;
-            if (LineReadings.DelayTimer <= 0) {
-                string val = LineReadings.DelayedName;
-                LineReadings.ClearCurrent();
-                Game1.sounds.PlayLocal(val, null, null, null, SoundContext.Default,
-                        out LineReadings.ActiveCue);
-                Patches.lineWasPlayed = true;
-            }
-            return;
-        }
-        if (lineWasPlayed) {
-            return;
-        }
-
-        if (db.characterDialogue != null && !string.IsNullOrEmpty(lineKey)) {
-            int dIndex = db.characterDialogue.currentDialogueIndex;
-            if (LineReadings.Data.TryGetValue(lineKey, out List<Line> cues) &&
-                    dIndex < cues.Count && !string.IsNullOrEmpty(cues[dIndex].Sound)) {
-                if (cues[dIndex].Delay > 0) {
-                    LineReadings.DelayTimer = cues[dIndex].Delay;
-                    LineReadings.DelayedName = cues[dIndex].Sound;
-                }
-                else {
-                    Game1.sounds.PlayLocal(cues[dIndex].Sound, null, null, null,
-                            SoundContext.Default, out LineReadings.ActiveCue);
-                }
-                return;
-            }
-        }
-
-        // if delays is an empty array, wait for the last cue to finish playing
-        if (VoiceData.CurrentVoice.Delay.Length == 0 && voiceCue?.IsPlaying is true) {
-            return;
-        }
-        VoiceData.DelayTimer -= time.ElapsedGameTime.Milliseconds;
-        if (VoiceData.DelayTimer > 0) {
-            return;
-        }
-        VoiceData.DelayTimer = ChooseFrom(VoiceData.CurrentVoice.Delay, 0);
-        // for mysterious reasons, pitch must be set after playing:
-        // Game1.playSound(string, int?) does not respect the int parameter
-        Game1.sounds.PlayLocal(VoiceData.CurrentVoice.CueName,
-                null, null, null, SoundContext.Default, out voiceCue);
-        voiceCue.Pitch = ChooseFrom(VoiceData.CurrentVoice.Pitch, 0) / 1200f;
-        voiceCue.Volume *= ChooseFrom(VoiceData.CurrentVoice.Volume, 1.0f);
-        */
     }
 
     internal static bool GetEventString(out string ret)
