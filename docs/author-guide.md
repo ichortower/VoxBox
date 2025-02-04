@@ -9,6 +9,9 @@ Stardew Valley.
 * [Introduction](#introduction)
 * [Type 1: Voice Data](#type-1-voice-data)
   * [Content Patcher Example: Type 1](#content-patcher-example-type-1)
+* [Type 1i: Line Expressions](#type-1i-line-expressions)
+  * [Dialogue IDs](#dialogue-ids)
+  * [Content Patcher Example: Type 1i](#content-patcher-example-type-1i)
   * [Dialogue Command](#dialogue-command)
 * [Type 2: Line Readings](#type-2-line-readings)
   * [Content Patcher Example - Type 2](#content-patcher-example-type-2)
@@ -20,9 +23,11 @@ Stardew Valley.
 Vox Box works by providing data assets for other mods to edit. At this time,
 those mods are expected to use Content Patcher to perform their edits.
 
-There are two different ways to define character voices:
+There are two and a half different ways to define character voices:
 
 1. Voice data, which sets general voice parameters to apply to an NPC.
+    1. Line expressions, to override an NPC's general voice data for specific
+    lines.
 2. Line readings, which sets specific audio to apply to specific dialogues.
 
 
@@ -46,7 +51,7 @@ Mods/ichortower.VoxBox/VoiceData
 ```
 
 The asset is a `string->object` dictionary. The `string` keys are NPC internal
-names, and the model (object) has the following fields:
+names, and the `object` model has the following fields:
 
 <table>
 
@@ -68,9 +73,9 @@ your cues this way, to provide more character to the speech effect).
 
 See [Modding:Audio on the Stardew Valley
 Wiki](https://stardewvalleywiki.com/Modding:Audio) for more detail on how to
-set up your cues in `Data/AudioChanges`. But, **it is strongly advised to set
-StreamedVorbis to false for any .ogg files you use in your VoiceData cues**
-(see [Caveats and Advice](#caveats-and-advice) for more).
+set up your cues in `Data/AudioChanges`. But, **you should set StreamedVorbis
+to false for any .ogg files you use in your VoiceData cues** (see [Caveats and
+Advice](#caveats-and-advice) for more).
 
 *Default:* `"dialogueCharacter"`
 
@@ -95,7 +100,7 @@ values here.
 
 Note also that the function controlling this is called only once per frame, so
 it has a minimum resolution of 16.67 milliseconds; therefore, for instance, the
-value `10` is no different than the value `0`.
+value `10` produces the same result as the value `0`.
 
 *Default:* `[30]`
 
@@ -141,8 +146,9 @@ Since it is a multiplier, `0.0` will generate complete silence, `1.0` will have
 no effect, and the player's perception of increased volume will likely depend
 on where their game volume sliders are set. **Use this setting with caution**;
 in most cases, you should omit this in the general voice data. The reason it is
-here is to allow [the special dialogue command](#dialogue-command) to override
-it to add expression to type 1 voice lines.
+here is to allow [the special dialogue command](#dialogue-command) and [Line
+Expressions](#type-1i-line-expressions) to override it to add expression to
+type 1 voice lines.
 
 If this field is set to an empty array (`[]`), then this mod will use a volume
 multiplier of `1.0` for every play, just as if you had specified `[1.0]`.
@@ -211,6 +217,94 @@ You can also use your own cues (the intended approach):
 }
 ```
 
+## Type 1i: Line Expressions
+
+This type has the same effect as Type 1: creating voices out of
+randomly-selected sounds. The difference is that the voice data is applied to a
+specific dialogue line instead of broadly to an NPC. This lets you, for
+example, make one line louder and higher-pitched to reflect an NPC saying
+something angrily.
+
+To add expressions, target the following asset:
+
+```
+Mods/ichortower.VoxBox/LineExpressions
+```
+
+The asset is a `string->list(object)` dictionary. The `string` keys are
+dialogue IDs (see below), and the values are lists (`[]`) of objects following
+the same model described above for Type 1 voice data. The only difference in
+the object model is that in this asset, the default value for every field is
+`null`, which means not to change that field (since this asset is specifying
+*overrides*).
+
+Within the list, the index of each object determines which segment of the
+dialogue line it applies to. A dialogue line might look like this:
+
+```
+"Fall seeds are here! Crops don't grow in winter so this is your last shot until spring.#$b#Better go all out, huh?"
+```
+
+This will be displayed using two dialogue boxes (they are separated by the
+`#$b#`). When targeting this line (which happens to be
+`Characters/Dialogue/Pierre:fall_Mon`), you can provide two objects in the
+list, which will target the first and second pieces, respectively.
+
+Setting an object to `null` causes no override to take place, and the mod will
+use either the NPC's general Type 1 voice data, or the vanilla sounds.
+Likewise, any fields within a provided object that are `null` (or not
+specified) will cause no change, so you need only provide the fields you wish
+to modify.
+
+
+### Dialogue IDs
+
+When patching in Line Expressions (or [Line Readings](#type-2-line-readings),
+below), your patch will need to use dialogue IDs as keys. When the dialogue
+matching the ID is shown, this mod will automatically override the vanilla or
+Type 1 dialogue sounds using the data provided.
+
+A dialogue ID for Vox Box's purposes comes in two formats:
+
+1. A **translation key** identifying a dialogue string in a game asset, in the
+   form `<asset name>:<key>`\
+   (example: `Characters/Dialogue/Marnie:Fri6`).
+2. An **event key** identifying a dialogue line in an event, in the form
+   `<event id>:<full text of event command>`\
+   (example: `45:speak Lewis \"Hey! What do you think you're doing? That's private property!$4\"`).
+
+Unfortunately, for infelicitous reasons, you do have to provide the full,
+expanded event command as the key when using the second format. This can be
+unwieldy, but [there may be alternatives](#caveats-and-advice).
+
+
+### Content Patcher Example: Type 1i
+
+Here's how you might patch a line expression into the example from Pierre's
+dialogue, above:
+
+```js
+{
+  "Target": "Mods/ichortower.VoxBox/LineExpressions",
+  "Action": "EditData",
+  "Entries": {
+    "Characters/Dialogue/Pierre:fall_Mon": [
+      null,
+      { "Pitch": [100], "Volume": [1.2] }
+    ]
+  }
+}
+```
+
+This will leave the first line unchanged, and make him say the second one
+("Better go all out, huh?") slightly louder and slightly higher pitched.
+
+
+### Dialogue Command
+
+The dialogue command is not currently available for use. Future betas and/or
+the 1.0 release will probably include it, pending feedback.
+
 
 ## Type 2: Line Readings
 
@@ -218,18 +312,109 @@ This type of voice allows you to specify a single audio cue that will play when
 a particular dialogue line is displayed. When a matching dialogue is shown, all
 other dialogue sounds are ignored and the given cue is played exactly once. The
 goal of this feature is to let you include recorded voice acting, foleys, other
-sound effects, etc., which should take the place of any vanilla or type 1 audio
-during the text display.
+sound effects, etc., which will take the place of any vanilla, type 1, or type
+1i audio during the text display.
 
-Line readings defined this way are tied to the ID (see below) of the dialogue
-itself, and take priority over type 1 voice data.
+To add line readings, target the following asset:
+
+```
+Mods/ichortower.VoxBox/LineReadings
+```
+
+The asset is a `string->list(object)` dictionary. The `string` keys are
+[dialogue IDs](#dialogue-ids), just like line expressions, and the values are
+lists (`[]`) of objects. The `object` model has the following fields:
+
+<table>
+
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Purpose</th>
+</tr>
+
+<tr>
+<td><code>Delay</code></td>
+<td>integer</td>
+<td>
+
+How long, in milliseconds, to wait before starting playback of the sound.
+
+*Default:* `0`
+
+</td>
+</tr>
+
+<tr>
+<td><code>Sound</code></td>
+<td>string</td>
+<td>
+
+An absolute file path of the sound file to play.
+
+This mod expects to read an absolute file path here, and will use it to
+construct a cue in the soundback on your behalf. The purpose of doing this is
+to save you work; you would normally need to create your own cue for each sound
+file, which would require a lot of copy and paste busywork. Instead, you
+should use Content Patcher's `{{AbsoluteFilePath}}` token here and let Vox Box
+make the cue.
+
+This field is required, since it is the purpose of patching in line readings.
+
+If you use an Ogg Vorbis (.ogg) file here, which I recommend in general, this
+mod will automatically set StreamedVorbis to `true` on the resulting cue. This
+can cause major problems if your file is too short (see [Caveats and
+Advice](#caveats-and-advice)), so either use longer sounds or switch to .wav
+for very short ones.
+
+</td>
+</tr>
+
+</table>
+
+Just like line expressions, the list of objects corresponds to the indexes in
+the dialogue string. Set an object to null to avoid setting a line reading for
+that segment.
+
 
 ### Content Patcher Example: Type 2
 
+Here's what it might look like to add readings for specific lines:
+
+```js
+{
+  "Target": "Mods/ichortower.VoxBox/LineReadings",
+  "Action": "EditData",
+  "Entries": {
+    "Characters/Dialogue/Lewis:GreenRain": [
+      {
+        "Sound": "{{AbsoluteFilePath: assets/audio/Lewis/Dialogue_GreenRain_0.ogg}}"
+      },
+      {
+        "Sound": "{{AbsoluteFilePath: assets/audio/Lewis/Dialogue_GreenRain_1.ogg}}"
+      }
+    ],
+    "14:speak Haley \"Oh! @.$8\"": [
+      {
+        "Sound": "{{AbsoluteFilePath: assets/audio/Haley/Event14_Line0.ogg}}",
+        "Delay": 220
+      }
+    ],
+    "14:speak Haley \"The lighting is so nice right now... I had to come out and take some nature shots.\"": [
+      {
+        "Sound": "{{AbsoluteFilePath: assets/audio/Haley/Event14_Line1.ogg}}",
+      }
+    ]
+  }
+},
+```
+
+
 ## Caveats and Advice
 
-StreamedVorbis not recommended for VoiceData (clips are replayed frequently)
-StreamedVorbis has minimum length
-event command matching is a bit unwieldy
-you can use translation keys in event command `speak`
-see the sample pack!
+- line readings is highest priority, then expressions, then voice data
+- StreamedVorbis not recommended for VoiceData (clips are replayed frequently)
+- StreamedVorbis has minimum length
+- event command matching is a bit unwieldy
+- you can use translation keys in event command `speak`
+- see the sample pack!
